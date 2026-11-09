@@ -1,0 +1,12 @@
+{
+  "name": "Liftlog",
+  "short_name": "Liftlog",
+  "description": "Dein persönlicher Gym-Tracker",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#101512",
+  "theme_color": "#101512",
+  "orientation": "portrait",
+  "icons": []
+}
