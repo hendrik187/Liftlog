@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101713">
+<title>Liftlog – Gym Tracker</title>
+<style>
+:root{--bg:#0c120f;--panel:#17221b;--line:#304437;--green:#397e50;--light:#8bd3a0;--text:#eef5ef;--muted:#9aada0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui}
+header{padding:22px 18px;font-size:23px;font-weight:850;letter-spacing:1px}
+header span{color:var(--light)}
+main{max-width:650px;margin:auto;padding:0 14px 90px}
+nav{position:fixed;bottom:0;left:0;right:0;background:#142019;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:10px 2px}
+nav button{background:none;color:var(--muted);font-size:12px;padding:8px}
+nav button.active{color:var(--light)}
+button{background:var(--green);color:white;border:0;border-radius:10px;padding:11px 14px;font-weight:650}
+button.secondary{background:#25372b;border:1px solid var(--line)}
+input,select{width:100%;padding:11px;background:#0d1711;color:var(--text);border:1px solid var(--line);border-radius:9px}
+label{display:block;color:var(--muted);font-size:12px;margin:10px 0 5px}
+.page{display:none}.page.active{display:block}
+.hero,.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:16px;margin:10px 0}
+.hero{background:linear-gradient(135deg,#1d3826,#142019)}
+h1{font-size:24px;margin:8px 0}h2{font-size:18px;margin-top:22px}
+.muted,.small{color:var(--muted)}.small{font-size:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px}
+.stat strong{display:block;font-size:24px;margin-top:5px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.exercise{border-bottom:1px solid var(--line);padding:12px 0}
+.set{display:grid;grid-template-columns:30px 1fr 1fr;gap:7px;margin:7px 0;align-items:center}
+.set span{text-align:center;color:var(--muted)}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.day{background:var(--panel);border:1px solid var(--line);border-radius:8px;aspect-ratio:1;display:grid;place-items:center;font-size:13px}
+.day.done{background:#244b31;border-color:var(--light)}
+.day.planned{border-color:#d6b66c}
+.day.selected{outline:2px solid var(--light)}
+.modal{background:#000b;position:fixed;inset:0;display:none;align-items:end;z-index:5}
+.modal.open{display:flex}
+.sheet{background:var(--panel);border-radius:20px 20px 0 0;padding:20px;width:100%;max-height:90vh;overflow:auto}
+.pick{padding:11px 2px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+</style>
+</head>
+<body>
+<header>LIFT<span>LOG</span></header>
+<main>
+<section id="home" class="page active">
+<div class="hero">
+<div class="small">DEIN FITNESS-ÜBERBLICK</div>
+<h1>Stark bleiben.</h1>
+<div id="today" class="muted"></div>
+<div class="actions">
+<button onclick="newWorkout()">＋ Training starten</button>
+<button class="secondary" onclick="tab('calendar')">Kalender</button>
+</div>
+</div>
+<div class="grid">
+<div class="stat">Trainings gesamt<strong id="total">0</strong></div>
+<div class="stat">Diese Woche<strong id="week">0</strong></div>
+</div>
+<h2>Nächstes Training</h2><div class="card" id="next">Noch nichts geplant.</div>
+<h2>Letztes Training</h2><div class="card" id="last">Noch keine Trainings.</div>
+</section>
+
+<section id="training" class="page">
+<div class="row"><h1>Training</h1><button onclick="newWorkout()">＋ Neu</button></div>
+<h2>Vorlagen</h2>
+<div class="grid">
+<button class="secondary" onclick="newWorkout('Push')">Push</button>
+<button class="secondary" onclick="newWorkout('Pull')">Pull</button>
+<button class="secondary" onclick="newWorkout('Legs')">Legs</button>
+<button class="secondary" onclick="newWorkout('Upper / Lower')">Upper / Lower</button>
+</div>
+<h2>Trainingsverlauf</h2><div id="history"></div>
+</section>
+
+<section id="calendar" class="page">
+<h1>Kalender</h1>
+<div class="row">
+<button class="secondary" onclick="changeMonth(-1)">‹</button>
+<strong id="month"></strong>
+<button class="secondary" onclick="changeMonth(1)">›</button>
+</div>
+<div class="calendar" id="cal" style="margin-top:12px"></div>
+<div class="small" style="margin-top:10px">Grün = absolviert · Gelb = geplant</div>
+<h2 id="dayTitle">Ausgewählter Tag</h2>
+<div class="card" id="dayInfo"></div>
+<button onclick="plan()">＋ Training planen</button>
+</section>
+
+<section id="progress" class="page">
+<h1>Fortschritt</h1>
+<h2>Persönliche Bestleistungen</h2><div id="records"></div>
+<h2>Übungsentwicklung</h2>
+<select id="exerciseSelect" onchange="progress()"></select>
+<div class="card" id="exerciseProgress"></div>
+</section>
+</main>
+<nav>
+<button class="active" onclick="tab('home',this)">⌂<br>Start</button>
+<button onclick="tab('training',this)">＋<br>Training</button>
+<button onclick="tab('calendar',this)">▦<br>Kalender</button>
+<button onclick="tab('progress',this)">↗<br>Fortschritt</button>
+</nav>
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script>
+const groups={
+"Brust":["Bankdrücken Langhantel","Schrägbankdrücken Kurzhantel","Brustpresse","Butterfly","Cable Flys","Liegestütze"],
+"Rücken":["Klimmzüge","Latzug","Kabelrudern","Langhantelrudern","Hyperextensions"],
+"Schultern":["Schulterdrücken","Schulterpresse","Seitheben","Reverse Flys","Face Pulls"],
+"Bizeps":["Kurzhantelcurls","Langhantelcurls","Hammercurls","Kabelcurls"],
+"Trizeps":["Trizepsdrücken Kabel","French Press","Dips","Enges Bankdrücken"],
+"Beine":["Kniebeugen","Beinpresse","Beinstrecker","Beinbeuger","Rumänisches Kreuzheben","Ausfallschritte","Wadenheben"],
+"Bauch":["Crunches","Plank","Hanging Leg Raises","Cable Crunches"],
+"Ganzkörper":["Kreuzheben","Burpees","Thrusters"]
+};
+let db=JSON.parse(localStorage.getItem("liftlog")||'{"sessions":[],"plans":[]}');
+let draft=null,month=new Date(new Date().getFullYear(),new Date().getMonth(),1),selected=key(new Date());
+function key(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function date(s){return new Date(s+"T12:00:00").toLocaleDateString("de-DE")}
+function safe(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function save(){localStorage.setItem("liftlog",JSON.stringify(db));render()}
+function tab(id,btn){document.querySelectorAll(".page").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));if(btn)btn.classList.add("active");if(id==="calendar")calendar();if(id==="progress")progress()}
+function modal(html){document.getElementById("sheet").innerHTML=html;document.getElementById("modal").classList.add("open")}
+function close(){document.getElementById("modal").classList.remove("open")}
+function newWorkout(name="Krafttraining"){draft={name,date:key(new Date()),exercises:[]};editor()}
+function editor(){
+modal(`<div class="row"><h2>Training</h2><button class="secondary" onclick="close()">Schließen</button></div>
+<label>Name</label><input id="wname" value="${safe(draft.name)}">
+<div class="row"><h3>Übungen</h3><button onclick="picker()">＋ Übung</button></div>
+<div id="chosen">${draft.exercises.map((e,i)=>editExercise(e,i)).join("")}</div>
+<div class="actions"><button onclick="finish()">Training speichern</button></div>`);
+}
+function editExercise(e,i){return `<div class="card"><div class="row"><strong>${safe(e.name)}</strong><button class="secondary" onclick="removeExercise(${i})">×</button></div>
+${e.sets.map((s,j)=>`<div class="set"><span>${j+1}</span><input type="number" placeholder="Gewicht kg" value="${s.w}" onchange="draft.exercises[${i}].sets[${j}].w=this.value"><input type="number" placeholder="Wdh." value="${s.r}" onchange="draft.exercises[${i}].sets[${j}].r=this.value"></div>`).join("")}
+<button class="secondary" onclick="addSet(${i})">＋ Satz</button></div>`}
+function refresh(){document.getElementById("chosen").innerHTML=draft.exercises.map(editExercise).join("")}
+function addSet(i){draft.exercises[i].sets.push({w:"",r:""});refresh()}
+function removeExercise(i){draft.exercises.splice(i,1);refresh()}
+function picker(){
+let html='<div class="row"><h2>Übung wählen</h2><button class="secondary" onclick="editor()">Zurück</button></div><input id="search" placeholder="Übung suchen" oninput="filter(this.value)">';
+for(let [g,items] of Object.entries(groups)){html+=`<h3>${g}</h3>`;for(let n of items)html+=`<div class="pick"><span>${n}</span><button onclick="choose('${n.replace(/'/g,"\\'")}')">＋</button></div>`}
+html+=`<label>Eigene Übung</label><input id="custom" placeholder="Übungsname"><button onclick="custom()">Hinzufügen</button>`;
+modal(html)}
+function filter(q){document.querySelectorAll(".pick").forEach(x=>x.style.display=x.innerText.toLowerCase().includes(q.toLowerCase())?"flex":"none")}
+function choose(n){draft.exercises.push({name:n,sets:[{w:"",r:""},{w:"",r:""},{w:"",r:""}]});editor()}
+function custom(){let n=document.getElementById("custom").value.trim();if(n)choose(n)}
+function finish(){draft.name=document.getElementById("wname").value||"Krafttraining";if(!draft.exercises.length){alert("Bitte mindestens eine Übung hinzufügen.");return}db.sessions.unshift({...draft,date:key(new Date()),id:Date.now()});draft=null;close();save()}
+function plan(){modal(`<h2>Training planen</h2><label>Datum</label><input id="pdate" type="date" value="${selected}"><label>Name</label><input id="pname" placeholder="z. B. Push"><button onclick="savePlan()">Speichern</button>`)}
+function savePlan(){let d=document.getElementById("pdate").value,n=document.getElementById("pname").value||"Krafttraining";if(d)db.plans.push({date:d,name:n,id:Date.now()});close();save()}
+function startPlan(id){let p=db.plans.find(x=>x.id===id);db.plans=db.plans.filter(x=>x.id!==id);draft={name:p.name,date:p.date,exercises:[]};editor();save()}
+function changeMonth(n){month=new Date(month.getFullYear(),month.getMonth()+n,1);calendar()}
+function chooseDay(d){selected=d;calendar()}
+function calendar(){
+let y=month.getFullYear(),m=month.getMonth(),offset=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate();
+document.getElementById("month").textContent=month.toLocaleDateString("de-DE",{month:"long",year:"numeric"});
+let html=["Mo","Di","Mi","Do","Fr","Sa","So"].map(x=>`<div class="small" style="text-align:center">${x}</div>`).join("");
+for(let i=0;i<offset;i++)html+='<div></div>';
+for(let d=1;d<=days;d++){let k=key(new Date(y,m,d)),done=db.sessions.some(s=>s.date===k),planned=db.plans.some(p=>p.date===k);html+=`<div class="day ${done?"done":planned?"planned":""} ${selected===k?"selected":""}" onclick="chooseDay('${k}')">${d}</div>`}
+document.getElementById("cal").innerHTML=html;
+document.getElementById("dayTitle").textContent=date(selected);
+let ss=db.sessions.filter(s=>s.date===selected),pp=db.plans.filter(p=>p.date===selected);
+document.getElementById("dayInfo").innerHTML=[...ss.map(s=>`<p>✓ ${safe(s.name)} – absolviert</p>`),...pp.map(p=>`<p>${safe(p.name)} – geplant <button onclick="startPlan(${p.id})">Starten</button></p>`)].join("")||"Keine Einheiten an diesem Tag.";
+}
+function progress(){
+let names=[...new Set(Object.values(groups).flat().concat(db.sessions.flatMap(s=>s.exercises.map(e=>e.name))))];
+let sel=document.getElementById("exerciseSelect"),old=sel.value;sel.innerHTML=names.map(n=>`<option>${safe(n)}</option>`).join("");if(names.includes(old))sel.value=old;
+let n=sel.value,logs=[],best=0,records={};
+db.sessions.forEach(s=>s.exercises.forEach(e=>e.sets.forEach(t=>{let w=Number(t.w),r=t.r;if(w>0){records[e.name]=Math.max(records[e.name]||0,w);if(e.name===n){logs.push(`${date(s.date)}: ${w} kg × ${r||"–"}`);best=Math.max(best,w)}}})));
+document.getElementById("records").innerHTML=Object.entries(records).map(([n,w])=>`<div class="card row">${safe(n)} <strong>${w} kg</strong></div>`).join("")||"Noch keine Rekorde.";
+document.getElementById("exerciseProgress").innerHTML=logs.length?`<strong>Bestleistung: ${best} kg</strong><p>${logs.reverse().join("<br>")}</p>`:"Noch keine Einträge für diese Übung.";
+}
+function render(){
+document.getElementById("today").textContent=new Date().toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long"});
+document.getElementById("total").textContent=db.sessions.length;
+let monday=new Date();monday.setDate(monday.getDate()-(monday.getDay()+6)%7);
+document.getElementById("week").textContent=db.sessions.filter(s=>s.date>=key(monday)).length;
+let next=db.plans.filter(p=>p.date>=key(new Date())).sort((a,b)=>a.date.localeCompare(b.date))[0];
+document.getElementById("next").textContent=next?next.name+" · "+date(next.date):"Noch nichts geplant.";
+let last=db.sessions[0];document.getElementById("last").textContent=last?last.name+" · "+date(last.date):"Noch keine Trainings.";
+document.getElementById("history").innerHTML=db.sessions.map(s=>`<div class="card"><strong>${safe(s.name)}</strong><div class="small">${date(s.date)} · ${s.exercises.length} Übungen</div></div>`).join("")||"Noch keine Trainings.";
+calendar();progress();
+}
+render();
+</script>
+</body>
+</html>
